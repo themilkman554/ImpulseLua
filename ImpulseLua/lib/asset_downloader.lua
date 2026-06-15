@@ -9,7 +9,7 @@ local AssetDownloader = {}
 local menuRootPath = FileMgr.GetMenuRootPath()
 local zipPath = menuRootPath .. "\\Lua\\ImpulseAssets.zip"
 local extractPath = menuRootPath .. "\\Lua\\Impulse"
-local assetsPath = menuRootPath .. "\\Lua\\Impulse\\Impulse-main" -- Where assets are read from
+local assetsPath = menuRootPath .. "\\Lua\\Impulse\\Impulse-main"
 local repoOwner = "themilkman554"
 local repoName = "Impulse"
 local branchName = "main"
@@ -24,16 +24,16 @@ local branchName = "main"
 local function curl_get(url)
     if not Curl then return nil end
     local curl = Curl.Easy()
-    curl:Setopt(10002, url)  -- CURLOPT_URL
-    curl:Setopt(52, 1)       -- CURLOPT_FOLLOWLOCATION
-    curl:Setopt(10018, "Cherax-Script")  -- CURLOPT_USERAGENT
-    curl:Setopt(64, 0) -- CURLOPT_SSL_VERIFYPEER (Disable SSL check)
-    curl:Setopt(81, 0) -- CURLOPT_SSL_VERIFYHOST
+    curl:Setopt(10002, url)  
+    curl:Setopt(52, 1)       
+    curl:Setopt(10018, "Cherax-Script")  
+    curl:Setopt(64, 0) 
+    curl:Setopt(81, 0) 
     
     curl:Perform()
     
     local startTime = os.time()
-    local timeoutSeconds = 60 -- 60 sec timeout
+    local timeoutSeconds = 60 
     
     while not curl:GetFinished() do
         if os.time() - startTime > timeoutSeconds then return nil end
@@ -60,12 +60,11 @@ end
 --------------------------------------------------------------------------------
 
 --- Check for assets and download if missing
---- Blocks execution until done (using Script.Yield where appropriate)
 function AssetDownloader.CheckAssets()
-    -- Check if natives.lua already exists in Impulse-main
-    local nativesPath = assetsPath .. "\\natives.lua"
-    if FileMgr.DoesFileExist(nativesPath) then
-        Logger.LogInfo("[AssetDownloader] Natives found at " .. nativesPath .. ". Skipping download.")
+    -- Check if Bookmarks.ytd already exists in Impulse-main
+    local bookmarksPath = assetsPath .. "\\Textures\\Bookmarks.ytd"
+    if FileMgr.DoesFileExist(bookmarksPath) then
+        Logger.LogInfo("[AssetDownloader] Assets found at " .. bookmarksPath .. ". Skipping download.")
         return true
     end
 
@@ -90,20 +89,17 @@ function AssetDownloader.CheckAssets()
     
     if write_file(zipPath, zipData, "wb") then
         Logger.LogInfo("[AssetDownloader] Saved zip file. Extracting...")
-        
-        -- Unzip to Impulse folder (creates Impulse-main folder inside)
         if FileMgr.Unzip(zipPath, extractPath) then
             Logger.LogInfo("[AssetDownloader] Extraction successful to " .. extractPath)
             FileMgr.DeleteFile(zipPath) -- Cleanup zip
             
-            -- Verify natives.lua now exists
-            if FileMgr.DoesFileExist(nativesPath) then
+            if FileMgr.DoesFileExist(bookmarksPath) then
                 GUI.AddToast("Impulse Asset Loader", "Assets Installed Successfully!", 3000, 0)
                 Logger.LogInfo("[AssetDownloader] Assets ready at " .. assetsPath)
                 return true
             else
-                Logger.LogError("[AssetDownloader] Extraction succeeded but natives.lua not found at " .. nativesPath)
-                GUI.AddToast("Impulse Asset Loader", "Installation Error: natives.lua not found", 5000, 0)
+                Logger.LogError("[AssetDownloader] Extraction succeeded but Bookmarks.ytd not found at " .. bookmarksPath)
+                GUI.AddToast("Impulse Asset Loader", "Installation Error: Assets not found", 5000, 0)
                 return false
             end
         else

@@ -73,6 +73,40 @@ function Menu.IsKeyJustPressed(vk)
     return isPressed and not wasPressed
 end
 
+-- Key repeat logic for Numpad inputs
+Menu.navKeyStates = {}
+Menu.navKeyTimers = {}
+local KEY_REPEAT_DELAY = 250 
+local KEY_REPEAT_RATE = 50   
+
+function Menu.IsNavKeyJustPressed(vk)
+    local isDown = false
+    if Utils.IsKeyDown then
+        isDown = Utils.IsKeyDown(vk)
+    elseif Utils.IsKeyPressed then
+        isDown = Utils.IsKeyPressed(vk)
+    end
+    
+    local wasDown = Menu.navKeyStates[vk] or false
+    local now = MISC.GET_GAME_TIMER()
+    
+    if isDown then
+        if not wasDown then
+            Menu.navKeyStates[vk] = true
+            Menu.navKeyTimers[vk] = now + KEY_REPEAT_DELAY
+            return true
+        else
+            if now > (Menu.navKeyTimers[vk] or 0) then
+                Menu.navKeyTimers[vk] = now + KEY_REPEAT_RATE
+                return true
+            end
+        end
+    else
+        Menu.navKeyStates[vk] = false
+    end
+    return false
+end
+
 --- Check if a control is pressed (with delay for repeat)
 ---@param control number Control ID
 ---@return boolean
@@ -161,10 +195,27 @@ function Menu.ProcessInput()
     
     local isUsingKBM = PAD.IS_USING_KEYBOARD_AND_MOUSE(2)
 
+    -- Numpad keys
+    local numpadUp = false
+    local numpadDown = false
+    local numpadLeft = false
+    local numpadRight = false
+    local numpadEnter = false
+    local numpadBack = false
+
+    if isUsingKBM then
+        numpadUp = Menu.IsNavKeyJustPressed(0x68)    -- Num 8
+        numpadDown = Menu.IsNavKeyJustPressed(0x62)  -- Num 2
+        numpadLeft = Menu.IsNavKeyJustPressed(0x64)  -- Num 4
+        numpadRight = Menu.IsNavKeyJustPressed(0x66) -- Num 6
+        numpadEnter = Menu.IsNavKeyJustPressed(0x65) -- Num 5
+        numpadBack = Menu.IsNavKeyJustPressed(0x60)  -- Num 0
+    end
+
     -- Navigate up
     local upPressed = false
     if isUsingKBM then
-        upPressed = Menu.IsControlJustPressed(172) or Menu.IsControlJustPressed(27) -- UP or PHONE UP
+        upPressed = Menu.IsControlJustPressed(172) or Menu.IsControlJustPressed(27) or numpadUp -- UP or PHONE UP
     else
         upPressed = Menu.IsControlJustPressed(27) -- PHONE UP (Dpad Up)
     end
@@ -199,7 +250,7 @@ function Menu.ProcessInput()
     -- Navigate down
     local downPressed = false
     if isUsingKBM then
-        downPressed = Menu.IsControlJustPressed(173) or Menu.IsControlJustPressed(173) -- DOWN or PHONE DOWN
+        downPressed = Menu.IsControlJustPressed(173) or Menu.IsControlJustPressed(173) or numpadDown -- DOWN or PHONE DOWN
     else
         downPressed = Menu.IsControlJustPressed(19) -- CHARACTER WHEEL (Dpad Down - Disabled in DisableControls so safe for menu)
     end
@@ -232,7 +283,7 @@ function Menu.ProcessInput()
     end
     
     -- Select / Enter (using 201 = INPUT_FRONTEND_ACCEPT, not 176 cellphone)
-    if Menu.IsControlJustPressed(201) or Menu.IsControlJustPressed(191) then -- ENTER or NUMPAD ENTER
+    if Menu.IsControlJustPressed(201) or Menu.IsControlJustPressed(191) or numpadEnter then -- ENTER or NUMPAD ENTER
         local option = options[Menu.currentOption]
         if option and not option.isBreak and option.OnSelect then
             option:OnSelect()
@@ -241,7 +292,7 @@ function Menu.ProcessInput()
     end
     
     -- Back (using 202 = INPUT_FRONTEND_CANCEL, not 177 cellphone)
-    if Menu.IsControlJustPressed(202) or Menu.IsControlJustPressed(194) then -- BACKSPACE or B button
+    if Menu.IsControlJustPressed(202) or Menu.IsControlJustPressed(194) or numpadBack then -- BACKSPACE or B button
         Menu.Back()
         Menu.PlaySound(Menu.Sounds.back)
     end
@@ -249,7 +300,7 @@ function Menu.ProcessInput()
     -- Left
     local leftPressed = false
     if isUsingKBM then
-        leftPressed = Menu.IsControlJustPressed(174) or Menu.IsControlJustPressed(189) -- LEFT or FRONTEND LEFT
+        leftPressed = Menu.IsControlJustPressed(174) or Menu.IsControlJustPressed(189) or numpadLeft -- LEFT or FRONTEND LEFT
     else
         leftPressed = Menu.IsControlJustPressed(189) -- FRONTEND LEFT (Dpad Left)
     end
@@ -265,7 +316,7 @@ function Menu.ProcessInput()
     -- Right
     local rightPressed = false
     if isUsingKBM then
-        rightPressed = Menu.IsControlJustPressed(175) or Menu.IsControlJustPressed(190) -- RIGHT or FRONTEND RIGHT
+        rightPressed = Menu.IsControlJustPressed(175) or Menu.IsControlJustPressed(190) or numpadRight -- RIGHT or FRONTEND RIGHT
     else
         rightPressed = Menu.IsControlJustPressed(190) -- FRONTEND RIGHT (Dpad Right)
     end

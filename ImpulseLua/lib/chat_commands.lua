@@ -266,13 +266,21 @@ local function HandleCommand(playerId, message)
     -- !explodesession
     if cmd == "!explodesession" and HasPerm("m_chatCommandExplodeSession") then
         Renderer.NotifyMapColor(string.format("Chat Commands\nExploding Session\nFrom: %s", playerName), 18)
-        local players = Utils.GetPlayers() 
-        for i = 0, 31 do
-            if NETWORK.NETWORK_IS_PLAYER_ACTIVE(i) then
-                local targetPed = PLAYER.GET_PLAYER_PED_SCRIPT_INDEX(i)
-                local coords = ENTITY.GET_ENTITY_COORDS(targetPed, true)
-                FIRE.ADD_EXPLOSION(coords.x, coords.y, coords.z, 2, 1000.0, true, false, 0.0)
+        local players = {}
+        if Players and Players.Get and ePlayerListSort then
+            players = Players.Get(ePlayerListSort.PLAYER_ID, "") or {}
+        else
+            for i = 0, 31 do
+                if NETWORK.NETWORK_IS_PLAYER_ACTIVE(i) then
+                    table.insert(players, i)
+                end
             end
+        end
+        
+        for _, i in ipairs(players) do
+            local targetPed = PLAYER.GET_PLAYER_PED_SCRIPT_INDEX(i)
+            local coords = ENTITY.GET_ENTITY_COORDS(targetPed, true)
+            FIRE.ADD_EXPLOSION(coords.x, coords.y, coords.z, 2, 1000.0, true, false, 0.0)
         end
     end
     

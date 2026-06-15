@@ -1,8 +1,27 @@
+--[[
+    Impulse Lua - Translation Engine
+    Port of languageMenu.cpp translation system from Impulse C++
+    
+    Supports loading .json translation files with the format:
+    {
+        "font": <number>,
+        "strings": {
+            "<submenu_name>": {
+                "<original_text>": "<translated_text>",
+                ...
+            },
+            ...
+        }
+    }
+    
+    Provides both scoped lookup (by submenu name) and flat lookup (across all sections).
+]]
 
 local json = require("Impulse/ImpulseLua/lib/json")
 
 local Translation = {}
 
+-- Internal state
 local loadedStrings = {}    -- [submenuName][originalText] = translatedText
 local flatStrings = {}      -- [originalText] = translatedText (flat lookup)
 local loadedFont = -1       -- Font index from translation file (-1 = default)
@@ -58,10 +77,13 @@ function Translation.Load(filePath)
                 for originalText, translatedText in pairs(entries) do
                     if type(translatedText) == "string" then
                         loadedStrings[submenuName][originalText] = translatedText
+                        -- Also add to flat lookup (first occurrence wins)
                         if not flatStrings[originalText] then
                             flatStrings[originalText] = translatedText
                         end
                     elseif type(translatedText) == "table" then
+                        -- Handle nested structs (e.g. "Bone struct": { "Head": "头部", ... })
+                        -- Store each key-value in the flat lookup
                         for innerKey, innerVal in pairs(translatedText) do
                             if type(innerVal) == "string" and not flatStrings[innerKey] then
                                 flatStrings[innerKey] = innerVal
@@ -76,9 +98,11 @@ function Translation.Load(filePath)
     isLoaded = true
     currentFilePath = filePath
     
+    -- Extract filename for display
     currentFile = filePath:match("([^/\\]+)$") or filePath
     currentFile = currentFile:match("(.+)%..+$") or currentFile
     
+    -- Debug: count entries
     local flatCount = 0
     for _ in pairs(flatStrings) do flatCount = flatCount + 1 end
     local scopeCount = 0
@@ -86,10 +110,12 @@ function Translation.Load(filePath)
     
     Logger.LogInfo("Translation: Loaded " .. currentFile .. " (" .. flatCount .. " flat, " .. scopeCount .. " scoped sections)")
     
+    -- Debug: check specific tags
     if flatStrings["[SELF]"] then
         Logger.LogInfo("Translation: [SELF] = " .. tostring(flatStrings["[SELF]"]))
     else
         Logger.LogInfo("Translation: [SELF] NOT found in flatStrings!")
+        -- Try to find it in scoped strings
         for section, entries in pairs(loadedStrings) do
             if type(entries) == "table" and entries["[SELF]"] then
                 Logger.LogInfo("Translation: [SELF] found in scoped section: " .. section)
@@ -101,7 +127,7 @@ function Translation.Load(filePath)
     return true
 end
 
-
+--- Look up a translated string by submenu name and key (scoped)
 ---@param submenuName string The submenu name section to look in
 ---@param key string The original English text
 ---@return string The translated string, or the original key if not found
@@ -172,6 +198,7 @@ end
     LANGUAGE FILE GENERATION
 ============================================ ]]
 
+--- Escape a string for JSON output
 ---@param s string
 ---@return string
 local function jsonEscapeString(s)
